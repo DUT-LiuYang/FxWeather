@@ -7,8 +7,8 @@ public interface HttpCallbackListener {
 	 * time:2015-12-30
 	 * description:月儿妹子别忘记我
 	 */
-	void onFinish();
+	void onFinish(String response);
 	
-	void onError();
+	void onError(Exception e);
 	
 }

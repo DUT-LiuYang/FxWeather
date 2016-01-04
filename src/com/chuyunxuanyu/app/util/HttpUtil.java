@@ -33,13 +33,13 @@ public class HttpUtil {
 					}
 					
 					if(listener != null){
-						listener.onFinish();
+						listener.onFinish(response.toString());
 					}
 					
 				} catch (Exception e) {
 					
 					if(listener != null){
-						listener.onError();
+						listener.onError(e);
 					}
 					
 				} finally {
