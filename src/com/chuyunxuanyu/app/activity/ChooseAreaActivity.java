@@ -12,11 +12,13 @@ import com.chuyunxuanyu.app.util.Utility;
 import com.chuyunxuanyu.app.R;
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.Window;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
@@ -66,6 +68,15 @@ public class ChooseAreaActivity extends Activity{
 	protected void onCreate(Bundle savedInstanceState) {
 		// TODO Auto-generated method stub
 		super.onCreate(savedInstanceState);
+		
+		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+		if(prefs.getBoolean("city_selected", false)){
+			Intent intent = new Intent(this, WeatherActivity.class);
+			//如果已经选取过了城市，就直接打开WeatherActivity，不必再选取城市
+			startActivity(intent);
+			finish();
+		}
+		
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.choose_area);
 		
@@ -83,11 +94,16 @@ public class ChooseAreaActivity extends Activity{
 				// TODO Auto-generated method stub
 				if(currentLevel == LEVEL_PROVINCE){
 					selectedProvince = provinceList.get(position);
-					Log.d("hehe", "选中的省是 " + selectedProvince.getProvinceName() + " " + selectedProvince.getProvinceCode());
 					queryCities();
 				} else if(currentLevel == LEVEL_CITY){
 					selectedCity = cityList.get(position);
 					queryCounties();
+				} else if(currentLevel == LEVEL_COUNTY){
+					String countyName = countyList.get(position).getCountyName();
+					Intent intent = new Intent(ChooseAreaActivity.this, WeatherActivity.class);
+					intent.putExtra("county_name", countyName);
+					startActivity(intent);
+					finish();
 				}
 			}
 			
@@ -99,18 +115,13 @@ public class ChooseAreaActivity extends Activity{
 	 * 查询全国所有的省，优先从数据库查询；如果没有从服务器获取
 	 */
 	private void queryProvinces() {
-		// TODO Auto-generated method stub
 		provinceList = fxWeatherDB.loadProvinces();
 		if(provinceList.size() > 0){
 			dataList.clear();
 			for(Province province : provinceList){
 				dataList.add(province.getProvinceName());
-				Log.d("hehe", "011 " + province.getProvinceCode());;
 			}
 			adapter.notifyDataSetChanged();
-			
-			Log.d("hehe", "0 ");
-			
 			listView.setSelection(0);
 			titleText.setText("中国");           
 			currentLevel = LEVEL_PROVINCE;            //将当前选中级别变为省级
@@ -126,30 +137,23 @@ public class ChooseAreaActivity extends Activity{
 	 * 否则传参的话，后退的时候，其实是并不知道上一级的id
 	 */
 	private void queryCities() {
-		// TODO Auto-generated method stub
 		cityList = fxWeatherDB.loadCities(selectedProvince.getId());
 		//Log.d("hehe", "11 " + cityList.get(1).getCityName());
 		if(cityList.size() > 0){
 			dataList.clear();
 			for(City city : cityList){
 				dataList.add(city.getCityName());
-				Log.d("hehe", "111 " + city.getCityName());
 			}
 			adapter.notifyDataSetChanged();
-			
-			Log.d("hehe", "1 " + dataList.get(0) + " " + cityList.get(0).getCityName());
-			
 			listView.setSelection(0);
 			titleText.setText(selectedProvince.getProvinceName());           
 			currentLevel = LEVEL_CITY;            //将当前选中级别变为城市级
 		} else {
-			Log.d("hehe", "查询省" + selectedProvince.getProvinceCode() + "的城市");
 			queryFromServer(selectedProvince.getProvinceCode(), "City");
 		}
 	}
 	
 	private void queryCounties() {
-		// TODO Auto-generated method stub
 		countyList = fxWeatherDB.loadCountries(selectedCity.getId());
 		if(countyList.size() > 0){
 			dataList.clear();
@@ -157,9 +161,6 @@ public class ChooseAreaActivity extends Activity{
 				dataList.add(county.getCountyName());
 			}
 			adapter.notifyDataSetChanged();
-			
-			Log.d("hehe", "2 "+ " " + countyList.get(0).getCountyName());
-			
 			listView.setSelection(0);
 			titleText.setText(selectedCity.getCityName());           
 			currentLevel = LEVEL_COUNTY;            //将当前选中级别变为城市级
@@ -172,15 +173,11 @@ public class ChooseAreaActivity extends Activity{
 	 *根据传入的代号和类型从服务器上查询省县市数据
 	 */
 	private void queryFromServer(final String code, final String type) {
-		Log.d("hehe", "4 ");
-		// TODO Auto-generated method stub
 		String address;
 		if(!TextUtils.isEmpty(code)){
 			address = "http://www.weather.com.cn/data/list3/city" + code +".xml";
-			Log.d("hehe", "a");
 		} else {
 			address = "http://www.weather.com.cn/data/list3/city.xml";
-			Log.d("hehe", "b");
 		}
 		showProgressDialog();
 		HttpUtil.sendHttpRequest(address, new HttpCallbackListener(){
@@ -194,7 +191,6 @@ public class ChooseAreaActivity extends Activity{
 					result = Utility.handleProvinceResponse(fxWeatherDB, response);
 				} else if("City".equals(type)){
 					result = Utility.handleCityResponse(fxWeatherDB, response, selectedProvince.getId());
-					Log.d("hehe", "41 " + result);
 				} else if("County".equals(type)){
 					result = Utility.handleCountyResponse(fxWeatherDB, response, selectedCity.getId());
 				}
@@ -229,7 +225,7 @@ public class ChooseAreaActivity extends Activity{
 					public void run() {
 						// TODO Auto-generated method stub
 						closeProgressDialog();
-						Toast.makeText(ChooseAreaActivity.this, "加载失败", Toast.LENGTH_SHORT);
+						Toast.makeText(ChooseAreaActivity.this, "加载失败", Toast.LENGTH_SHORT).show();
 					}//run
 					
 				});
